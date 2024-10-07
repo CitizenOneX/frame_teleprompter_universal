@@ -17,7 +17,7 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="28" />
 
     <application
-        android:label="frame_teleprompter"
+        android:label="Frame Teleprompter Universal"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

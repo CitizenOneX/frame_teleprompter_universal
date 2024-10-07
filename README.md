@@ -1,6 +1,6 @@
-# Teleprompter for Frame
+# Teleprompter for Frame with Unicode Support
 
-Simple teleprompter that loads a text file picked from the user's device and sends one line at a time for display on Frame.
+Simple teleprompter that loads a UTF-8 text file picked from the user's device and sends one line at a time for display on Frame.
 
 Next/Previous paging through content is done via a vertical swipe up or down anywhere on the application screen.
 

@@ -83,11 +83,11 @@ class MainAppState extends State<MainApp> with SimpleFrameAppState {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Frame Teleprompter',
+      title: 'Frame Teleprompter Universal',
       theme: ThemeData.dark(),
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('Frame Teleprompter'),
+          title: const Text('Frame Teleprompter Universal'),
           actions: [getBatteryWidget()]
         ),
         body: GestureDetector(
