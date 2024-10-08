@@ -21,4 +21,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - packages/simple_frame_app/lua/battery.min.lua
+    - packages/simple_frame_app/lua/code.min.lua
+    - packages/simple_frame_app/lua/data.min.lua
+    - packages/simple_frame_app/lua/sprite.min.lua
+    - packages/simple_frame_app/lua/text_sprite_block.min.lua
     - assets/frame_app.min.lua

@@ -4,8 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:logging/logging.dart';
 
 import 'package:simple_frame_app/simple_frame_app.dart';
-import 'package:simple_frame_app/text_utils.dart';
-import 'package:simple_frame_app/tx/plain_text.dart';
+import 'package:simple_frame_app/tx/code.dart';
+import 'package:simple_frame_app/tx/text_sprite_block.dart';
 
 
 void main() => runApp(const MainApp());
@@ -32,6 +32,9 @@ class MainAppState extends State<MainApp> with SimpleFrameAppState {
   // teleprompter data - text and current chunk
   final List<String> _textChunks = [];
   int _currentLine = -1;
+  TextDirection _textDir = TextDirection.ltr;
+  int _textSizeIndex = 1;
+  final List<int> _textSizeValues = [16, 32, 48, 64];
 
   @override
   Future<void> run() async {
@@ -54,12 +57,14 @@ class MainAppState extends State<MainApp> with SimpleFrameAppState {
 
         // Update the UI
         setState(() {
-          _textChunks.addAll(content.split('\n').map((chunk) => TextUtils.wrapText(chunk, 640, 4)));
+          // strip out any carriage-return characters if the file is CRLF
+          content = content.replaceAll(RegExp('\r'), '');
+          _textChunks.addAll(content.split('\n'));
           _currentLine = 0;
         });
 
         // and send initial text to Frame
-        await frame!.sendMessage(TxPlainText(msgCode: 0x0a, text: TextUtils.wrapText(_textChunks[_currentLine], 640, 4)));
+        await sendTextToFrame(_textChunks[_currentLine]);
       }
       else {
         currentState = ApplicationState.ready;
@@ -72,8 +77,43 @@ class MainAppState extends State<MainApp> with SimpleFrameAppState {
     }
   }
 
+  /// create the TextSpriteBlock for the specified text, then send the TSB header and line sprites one by one
+  Future<void> sendTextToFrame(String text) async {
+    if (text.isEmpty) {
+      // just send a Clear Display message
+      await frame!.sendMessage(TxCode(msgCode: 0x10));
+      return;
+    }
+
+    var tsb = TxTextSpriteBlock(
+      msgCode: 0x20,
+      width: 600,
+      fontSize: _textSizeValues[_textSizeIndex],
+      displayRows: 4,
+      textDirection: _textDir,
+      textAlign: TextAlign.start,
+      text: text,
+    );
+
+    // rasterize the text to sprites
+    await tsb.rasterize();
+
+    // send the TxTextSpriteBlock lines to Frame for display
+    // block header first
+    await frame!.sendMessage(tsb);
+
+    // send over the lines one by one
+    // note that the sprites have the same message code, so they need to be handled by the text_sprite_block parser
+    for (var line in tsb.lines) {
+      await frame!.sendMessage(line);
+    }
+  }
+
   @override
   Future<void> cancel() async {
+    // send a Clear Display message
+    await frame!.sendMessage(TxCode(msgCode: 0x10));
+
     currentState = ApplicationState.ready;
     _textChunks.clear();
     _currentLine = -1;
@@ -90,6 +130,67 @@ class MainAppState extends State<MainApp> with SimpleFrameAppState {
           title: const Text('Frame Teleprompter Universal'),
           actions: [getBatteryWidget()]
         ),
+        drawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: <Widget>[
+              const DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                ),
+                child: Text('Settings',
+                  style: TextStyle(color: Colors.white, fontSize: 24),
+                  ),
+              ),
+              ListTile(
+                title: const Text('Text Size'),
+                subtitle: Slider(
+                  value: _textSizeIndex.toDouble(),
+                  min: 0,
+                  max: _textSizeValues.length - 1,
+                  divisions: _textSizeValues.length - 1,
+                  label: _textSizeValues[_textSizeIndex].toStringAsFixed(0),
+                  onChanged: (value) {
+                    setState(() {
+                      _textSizeIndex = value.toInt();
+                    });
+                  },
+                  onChangeEnd: (value) {
+                    if (currentState == ApplicationState.running) {
+                      sendTextToFrame(_textChunks[_currentLine]);
+                    }
+                  },
+                ),
+              ),
+              RadioListTile<TextDirection>(
+                title: const Text('Left Align'),
+                value: TextDirection.ltr,
+                groupValue: _textDir,
+                onChanged: (value) {
+                  setState(() {
+                    _textDir = value ?? TextDirection.ltr;
+                    if (currentState == ApplicationState.running) {
+                      sendTextToFrame(_textChunks[_currentLine]);
+                    }
+                  });
+                },
+              ),
+              RadioListTile<TextDirection>(
+                title: const Text('Right Align'),
+                value: TextDirection.rtl,
+                groupValue: _textDir,
+                onChanged: (value) {
+                  setState(() {
+                    _textDir = value ?? TextDirection.rtl;
+                    if (currentState == ApplicationState.running) {
+                      sendTextToFrame(_textChunks[_currentLine]);
+                    }
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
         body: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onVerticalDragEnd: (x) async {
@@ -100,7 +201,7 @@ class MainAppState extends State<MainApp> with SimpleFrameAppState {
                 _currentLine < _textChunks.length - 1 ? ++_currentLine : null;
               }
               if (_currentLine >= 0) {
-                await frame!.sendMessage(TxPlainText(msgCode: 0x0a, text: TextUtils.wrapText(_textChunks[_currentLine], 640, 4)));
+                await sendTextToFrame(_textChunks[_currentLine]);
               }
               if (mounted) setState(() {});
             },
