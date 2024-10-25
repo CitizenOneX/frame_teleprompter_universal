@@ -31,12 +31,20 @@ function app_loop()
                     if (data.app_data[TEXT_SPRITE_BLOCK] ~= nil) then
                         -- show the text sprite block
                         local tsb = data.app_data[TEXT_SPRITE_BLOCK]
-                        for index, spr in ipairs(tsb.sprites) do
-                            frame.display.bitmap(tsb.offsets[index].x + 1, tsb.offsets[index].y + 1, spr.width, 2^spr.bpp, 0, spr.pixel_data)
-                        end
-                        frame.display.show()
 
-                        -- when to nil out the data.app_data[TEXT_SPRITE_BLOCK]?
+                        -- it can be that we haven't got any sprites yet
+                        local shift_y = 0
+                        if tsb.first_sprite_index > 0 then
+                            shift_y = tsb.offsets[tsb.first_sprite_index].y
+
+                            for index = tsb.first_sprite_index, tsb.last_sprite_index do
+                                local spr = tsb.sprites[index]
+                                frame.display.bitmap(1, tsb.offsets[index].y + 1 - shift_y, spr.width, 2^spr.bpp, 0, spr.pixel_data)
+                            end
+
+                            frame.display.show()
+                            last_text_show = frame.time.utc()
+                        end
                     end
 
                     if (data.app_data[CLEAR_MSG] ~= nil) then

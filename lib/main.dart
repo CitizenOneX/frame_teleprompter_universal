@@ -87,16 +87,16 @@ class MainAppState extends State<MainApp> with SimpleFrameAppState {
 
     var tsb = TxTextSpriteBlock(
       msgCode: 0x20,
-      width: 600,
+      width: 620,
       fontSize: _textSizeValues[_textSizeIndex],
-      displayRows: 4,
+      maxDisplayRows: 10,
       textDirection: _textDir,
       textAlign: TextAlign.start,
       text: text,
     );
 
     // rasterize the text to sprites
-    await tsb.rasterize();
+    await tsb.rasterize(startLine: 0, endLine: tsb.numLines - 1);
 
     // send the TxTextSpriteBlock lines to Frame for display
     // block header first
@@ -104,8 +104,8 @@ class MainAppState extends State<MainApp> with SimpleFrameAppState {
 
     // send over the lines one by one
     // note that the sprites have the same message code, so they need to be handled by the text_sprite_block parser
-    for (var line in tsb.lines) {
-      await frame!.sendMessage(line);
+    for (var sprite in tsb.rasterizedSprites) {
+      await frame!.sendMessage(sprite);
     }
   }
 
